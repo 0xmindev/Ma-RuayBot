@@ -25,7 +25,7 @@ LINE_CHANNEL_ACCESS_TOKEN = "yCkQ7/HGH47Dbnwc1+M2JQYLE2mpB8LrRSepVgjax4ImCg0CX0C
 
 GAS_WEBAPP_URL = (
     "https://script.google.com/macros/s/"
-    "AKfycbyEQ43DFLtDxSXH9O2jo6G_S1dHq6TuhGMdCIvq5TDS37D_nXSxOa0ySaToH587GVhW/exec"
+    "AKfycbxXDzc1lky3GMvh4Zhzcq62UHEk_DybpFmlHnVjo_PqtMQqZgLdqPle2hZIGaKuJ5z4/exec"
 )
 
 TZ = pytz.timezone("Asia/Bangkok")
