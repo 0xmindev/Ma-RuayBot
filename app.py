@@ -61,23 +61,23 @@ def handle_revenue(text: str):
     match = re.match(r"^(\d+)(?:\s+(.*))?$", text)
     if not match:
         return TextMessage(
-            text='พิมพ์ตัวเลขเพื่อบันทึกรายรับ หรือพิมพ์คำสั่ง "ลบ", "สรุปยอด", "สรุปรายเดือน" ค่ะ'
+            text='พิมพ์ตัวเลขเพื่อบันทึกรายรับ หรือพิมพ์คำสั่ง "ลบ", "สรุปยอด", "สรุปรายเดือน" คับ'
         )
     amount = float(match.group(1))
     note = match.group(2) if match.group(2) else "-"
     ts = now_bangkok().strftime("%Y-%m-%d %H:%M:%S")
     _post_gas({"action": "add", "amount": amount, "note": note, "timestamp": ts})
     return TextMessage(
-        text=f"✅ บันทึกรายรับ +{amount:.0f} บาท ({note}) เรียบร้อยค่ะ!\n"
-        '(หากพิมพ์ผิด พิมพ์คำว่า "ลบ" เพื่อยกเลิกรายการล่าสุดได้ค่ะ)'
+        text=f"✅ บันทึกรายรับ +{amount:.0f} บาท ({note}) เรียบร้อยคับ!\n"
+        '(หากพิมพ์ผิด พิมพ์คำว่า "ลบ" เพื่อยกเลิกรายการล่าสุดได้คับ)'
     )
 
 
 def handle_delete():
     result = _post_gas({"action": "delete"})
     if result.get("found"):
-        return TextMessage(text="↩️ ยกเลิกรายการล่าสุดให้แล้วค่ะ")
-    return TextMessage(text="ไม่พบรายการล่าสุดที่สามารถลบได้ค่ะ")
+        return TextMessage(text="↩️ ยกเลิกรายการล่าสุดให้แล้วคับ")
+    return TextMessage(text="ไม่พบรายการล่าสุดที่สามารถลบได้คับ")
 
 
 def handle_summary():
@@ -85,13 +85,13 @@ def handle_summary():
     count = result.get("count", 0)
     total = result.get("total", 0)
     if count == 0:
-        return TextMessage(text="ไม่มีรายการที่ยัง Active อยู่ในรอบนี้ค่ะ")
+        return TextMessage(text="ไม่มีรายการที่ยัง Active อยู่ในรอบนี้คับ")
     _post_gas({"action": "close"})
     return TextMessage(
         text=f"📊 สรุปยอดประจำรอบ\n"
         f"• จำนวนรายการ: {count} รายการ\n"
         f"• ยอดรวมทั้งหมด: {total:,.2f} บาท\n"
-        f"🕐 ตัดรอบบัญชีเรียบร้อยแล้วค่ะ"
+        f"🕐 ตัดรอบบัญชีเรียบร้อยแล้วคับ"
     )
 
 
@@ -102,7 +102,7 @@ def handle_monthly_summary():
     month = result.get("month", now_bangkok().strftime("%B"))
     year = result.get("year", now_bangkok().year)
     if count == 0:
-        return TextMessage(text=f"ไม่มีรายการในเดือน {month} {year} ค่ะ")
+        return TextMessage(text=f"ไม่มีรายการในเดือน {month} {year} คับ")
     return TextMessage(
         text=f"📈 สรุปรายเดือน {month} {year}\n"
         f"• จำนวนรายการ: {count} รายการ\n"
@@ -112,7 +112,7 @@ def handle_monthly_summary():
 
 def handle_reset():
     _post_gas({"action": "reset"})
-    return TextMessage(text="🗑️ ล้างข้อมูลทั้งหมดเรียบร้อยค่ะ")
+    return TextMessage(text="🗑️ ล้างข้อมูลทั้งหมดเรียบร้อยคับ")
 
 
 def handle_message(text: str):
