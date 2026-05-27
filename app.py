@@ -41,7 +41,11 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 
 def _post_gas(payload: dict) -> dict:
-    resp = requests.post(GAS_WEBAPP_URL, data=json.dumps(payload))
+    resp = requests.post(
+        GAS_WEBAPP_URL,
+        json=payload,
+        headers={"Content-Type": "application/json"},
+    )
     resp.raise_for_status()
     return resp.json()
 
