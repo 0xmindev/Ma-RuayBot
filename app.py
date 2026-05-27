@@ -25,7 +25,7 @@ LINE_CHANNEL_ACCESS_TOKEN = "yCkQ7/HGH47Dbnwc1+M2JQYLE2mpB8LrRSepVgjax4ImCg0CX0C
 
 GAS_WEBAPP_URL = (
     "https://script.google.com/macros/s/"
-    "AKfycbxXDzc1lky3GMvh4Zhzcq62UHEk_DybpFmlHnVjo_PqtMQqZgLdqPle2hZIGaKuJ5z4/exec"
+    "AKfycbw0IzBV5HcPN7g1EXHM9QNf6QRrTkNSHU9sPWHQcvQrO-pH00cOetuB2G5U4g6XKIWC/exec"
 )
 
 TZ = pytz.timezone("Asia/Bangkok")
@@ -110,14 +110,21 @@ def handle_monthly_summary():
     )
 
 
+def handle_reset():
+    _post_gas({"action": "reset"})
+    return TextMessage(text="🗑️ ล้างข้อมูลทั้งหมดเรียบร้อยค่ะ")
+
+
 def handle_message(text: str):
     text = text.strip()
-    if text == "ลบ":
+    if text in ("ลบ", "delete"):
         return handle_delete()
-    if text == "สรุปยอด":
+    if text in ("สรุปยอด", "summary"):
         return handle_summary()
-    if text == "สรุปรายเดือน":
+    if text in ("สรุปรายเดือน", "monthly"):
         return handle_monthly_summary()
+    if text in ("รีเซ็ต", "reset", "clear"):
+        return handle_reset()
     return handle_revenue(text)
 
 
