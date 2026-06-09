@@ -19,13 +19,20 @@ from linebot.v3.webhooks import MessageEvent, TextMessageContent
 
 # ==================== CONFIG ====================
 
-LINE_CHANNEL_ID = "2010215865"
-LINE_CHANNEL_SECRET = "01567cead4373545dfc6eaa2c13b1c43"
-LINE_CHANNEL_ACCESS_TOKEN = "yCkQ7/HGH47Dbnwc1+M2JQYLE2mpB8LrRSepVgjax4ImCg0CX0CwaTD0pfzXk24sN1DpEzxYYMWZNB7ovJubYXFjSbZKA0NXepU7W+dgX9itoZWCqHA5I0cLriuVSKkvk2I5ZZ3lHVoN2VBY0vq3JQdB04t89/1O/w1cDnyilFU="
+LINE_CHANNEL_ID = os.getenv("LINE_CHANNEL_ID", "2010215865")
+LINE_CHANNEL_SECRET = os.getenv(
+    "LINE_CHANNEL_SECRET",
+    "01567cead4373545dfc6eaa2c13b1c43",
+)
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv(
+    "LINE_CHANNEL_ACCESS_TOKEN",
+    "yCkQ7/HGH47Dbnwc1+M2JQYLE2mpB8LrRSepVgjax4ImCg0CX0CwaTD0pfzXk24sN1DpEzxYYMWZNB7ovJubYXFjSbZKA0NXepU7W+dgX9itoZWCqHA5I0cLriuVSKkvk2I5ZZ3lHVoN2VBY0vq3JQdB04t89/1O/w1cDnyilFU=",
+)
 
-GAS_WEBAPP_URL = (
+GAS_WEBAPP_URL = os.getenv(
+    "GAS_WEBAPP_URL",
     "https://script.google.com/macros/s/"
-    "AKfycbzttJTvc8olNxs5160N5rmCqHVzfxAIQ04q3OyTxl5zRWUHlijw0GZoqzuo_gj9oP25/exec"
+    "AKfycbzttJTvc8olNxs5160N5rmCqHVzfxAIQ04q3OyTxl5zRWUHlijw0GZoqzuo_gj9oP25/exec",
 )
 
 TZ = pytz.timezone("Asia/Bangkok")

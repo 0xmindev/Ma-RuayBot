@@ -1,0 +1,10 @@
+services:
+  - type: web_service
+    name: ma-ruay-bot
+    runtime: python
+    repo: https://github.com/0xmindev/Ma-RuayBot
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    healthCheckPath: /webhook
+    plan: free
