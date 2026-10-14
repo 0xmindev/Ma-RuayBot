@@ -1,10 +1,9 @@
 import os
 import re
-import json
+import sqlite3
 from datetime import datetime
 
 import pytz
-import requests
 from flask import Flask, request, abort
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
@@ -19,20 +18,13 @@ from linebot.v3.webhooks import MessageEvent, TextMessageContent
 
 # ==================== CONFIG ====================
 
-LINE_CHANNEL_ID = os.getenv("LINE_CHANNEL_ID", "2010215865")
-LINE_CHANNEL_SECRET = os.getenv(
-    "LINE_CHANNEL_SECRET",
-    "01567cead4373545dfc6eaa2c13b1c43",
-)
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv(
-    "LINE_CHANNEL_ACCESS_TOKEN",
-    "yCkQ7/HGH47Dbnwc1+M2JQYLE2mpB8LrRSepVgjax4ImCg0CX0CwaTD0pfzXk24sN1DpEzxYYMWZNB7ovJubYXFjSbZKA0NXepU7W+dgX9itoZWCqHA5I0cLriuVSKkvk2I5ZZ3lHVoN2VBY0vq3JQdB04t89/1O/w1cDnyilFU=",
-)
+LINE_CHANNEL_ID = os.getenv("LINE_CHANNEL_ID", "")
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "")
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")
 
-GAS_WEBAPP_URL = os.getenv(
-    "GAS_WEBAPP_URL",
-    "https://script.google.com/macros/s/"
-    "AKfycbzttJTvc8olNxs5160N5rmCqHVzfxAIQ04q3OyTxl5zRWUHlijw0GZoqzuo_gj9oP25/exec",
+DB_PATH = os.getenv(
+    "DATABASE_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "maruay.db"),
 )
 
 TZ = pytz.timezone("Asia/Bangkok")
@@ -44,21 +36,102 @@ app = Flask(__name__)
 configuration = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-# ==================== GOOGLE APPS SCRIPT (POST) ====================
+
+# ==================== LOCAL SQLITE STORAGE ====================
 
 
-def _post_gas(payload: dict) -> dict:
-    resp = requests.post(
-        GAS_WEBAPP_URL,
-        json=payload,
-        headers={"Content-Type": "application/json"},
-    )
-    resp.raise_for_status()
-    return resp.json()
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    with get_db() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS revenues (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                amount REAL NOT NULL,
+                note TEXT NOT NULL,
+                status TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+
+
+def record_revenue(amount: float, note: str, timestamp: str):
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO revenues (timestamp, amount, note, status) VALUES (?, ?, ?, ?)",
+            (timestamp, amount, note, "Active"),
+        )
+        conn.commit()
+
+
+def get_active_summary():
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total "
+            "FROM revenues WHERE status = 'Active'"
+        ).fetchone()
+    return float(row["total"]), int(row["count"])
+
+
+def delete_latest():
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id FROM revenues WHERE status = 'Active' "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if row is None:
+            return False
+        conn.execute(
+            "UPDATE revenues SET status = 'Deleted' WHERE id = ?", (row["id"],)
+        )
+        conn.commit()
+        return True
+
+
+def close_active():
+    with get_db() as conn:
+        conn.execute("UPDATE revenues SET status = 'Closed' WHERE status = 'Active'")
+        conn.commit()
+
+
+def get_monthly_summary():
+    now = now_bangkok()
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT timestamp, amount FROM revenues WHERE status != 'Deleted'"
+        ).fetchall()
+    total = 0.0
+    count = 0
+    for row in rows:
+        try:
+            ts = datetime.strptime(row["timestamp"], "%Y-%m-%d %H:%M:%S")
+        except (TypeError, ValueError):
+            continue
+        if ts.month == now.month and ts.year == now.year:
+            total += float(row["amount"])
+            count += 1
+    return total, count, now.strftime("%B"), now.year
+
+
+def reset_data():
+    with get_db() as conn:
+        conn.execute("DELETE FROM revenues")
+        conn.commit()
 
 
 def now_bangkok():
     return datetime.now(TZ)
+
+
+# Initialize storage as soon as the module is imported.
+init_db()
 
 
 # ==================== BOT LOGIC ====================
@@ -73,7 +146,7 @@ def handle_revenue(text: str):
     amount = float(match.group(1))
     note = match.group(2) if match.group(2) else "-"
     ts = now_bangkok().strftime("%Y-%m-%d %H:%M:%S")
-    _post_gas({"action": "add", "amount": amount, "note": note, "timestamp": ts})
+    record_revenue(amount, note, ts)
     return TextMessage(
         text=f"✅ บันทึกรายรับ +{amount:.0f} บาท ({note}) เรียบร้อยคับโบร๋วว!\n"
         '(หากพิมพ์ผิด พิมพ์คำว่า "ลบ" เพื่อยกเลิกรายการล่าสุดได้คับโบร๋วว)'
@@ -81,19 +154,16 @@ def handle_revenue(text: str):
 
 
 def handle_delete():
-    result = _post_gas({"action": "delete"})
-    if result.get("found"):
+    if delete_latest():
         return TextMessage(text="↩️ ยกเลิกรายการล่าสุดให้แล้วคับโบร๋วว")
     return TextMessage(text="ไม่พบรายการล่าสุดที่สามารถลบได้คับโบร๋วว")
 
 
 def handle_summary():
-    result = _post_gas({"action": "summary"})
-    count = result.get("count", 0)
-    total = result.get("total", 0)
+    total, count = get_active_summary()
     if count == 0:
         return TextMessage(text="ไม่มีรายการที่ยัง Active อยู่ในรอบนี้คับโบร๋วว")
-    _post_gas({"action": "close"})
+    close_active()
     return TextMessage(
         text=f"📊 สรุปยอดประจำรอบ\n"
         f"• จำนวนรายการ: {count} รายการ\n"
@@ -103,11 +173,7 @@ def handle_summary():
 
 
 def handle_monthly_summary():
-    result = _post_gas({"action": "monthly"})
-    count = result.get("count", 0)
-    total = result.get("total", 0)
-    month = result.get("month", now_bangkok().strftime("%B"))
-    year = result.get("year", now_bangkok().year)
+    total, count, month, year = get_monthly_summary()
     if count == 0:
         return TextMessage(text=f"ไม่มีรายการในเดือน {month} {year} คับโบร๋วว")
     return TextMessage(
@@ -118,7 +184,7 @@ def handle_monthly_summary():
 
 
 def handle_reset():
-    _post_gas({"action": "reset"})
+    reset_data()
     return TextMessage(text="🗑️ ล้างข้อมูลทั้งหมดเรียบร้อยคับโบร๋วว")
 
 
@@ -167,4 +233,4 @@ def webhook_info():
 
 
 if __name__ == "__main__":
-    app.run(port=5005, debug=False, host="0.0.0.0")
+    app.run(port=int(os.getenv("PORT", "5005")), debug=False, host="0.0.0.0")
